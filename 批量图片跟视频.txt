@@ -1,0 +1,112 @@
+Sub 插入图片和视频()
+    Dim 文件夹路径 As String
+    Dim 单元格 As Range
+    Dim 文件系统对象 As Object
+    Dim 文件夹对象 As Object
+    Dim 文件对象 As Object
+    Dim 图片文件 As String
+    Dim 视频文件 As String
+    Dim 图片对象 As Picture
+    Dim 视频形状 As Object
+
+    ' 手动选择图片和视频的文件夹路径
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .Title = "请选择需要插入图片和视频的文件夹"
+        If .Show = -1 Then
+            文件夹路径 = .SelectedItems(1)
+        Else
+            Exit Sub
+        End If
+    End With
+
+    ' 手动选择插入的单元格
+    On Error Resume Next
+    Set 单元格 = Application.InputBox("请选择需要插入的单元格", Type:=8)
+    On Error GoTo 0
+
+    ' 检查是否取消了选择
+    If 单元格 Is Nothing Then
+        MsgBox "你取消了选择。"
+        Exit Sub
+    End If
+
+    ' 创建文件系统对象
+    Set 文件系统对象 = CreateObject("Scripting.FileSystemObject")
+
+    ' 获取图片和视频文件夹对象
+    Set 文件夹对象 = 文件系统对象.GetFolder(文件夹路径)
+
+    ' 初始化单元格
+    Set 单元格 = 单元格.Cells(1, 1)
+
+    ' 循环遍历文件夹中的每个文件，并插入图片或视频
+    For Each 文件对象 In 文件夹对象.Files
+        ' 构建文件的完整路径
+        Dim 文件路径 As String
+        文件路径 = 文件对象.Path
+
+        ' 判断文件类型并插入相应对象
+        If 文件是图片类型(文件路径) Then
+            ' 插入图片
+            Set 图片对象 = ActiveSheet.Pictures.Insert(文件路径)
+
+            ' 设置图片位置和大小（这里设置为插入单元格的四分之三大小，并居中）
+            With 图片对象
+                .Top = 单元格.Top + 单元格.Height / 8  ' 四分之一距离
+                .Left = 单元格.Left + 单元格.Width / 8  ' 四分之一距离
+                .ShapeRange.LockAspectRatio = msoFalse
+                .ShapeRange.Width = 单元格.Width * 3 / 4  ' 四分之三大小
+                .ShapeRange.Height = 单元格.Height * 3 / 4  ' 四分之三大小
+            End With
+        ElseIf 文件是视频类型(文件路径) Then
+            ' 插入嵌入式视频
+            Set 视频形状 = ActiveSheet.OLEObjects.Add(Filename:=文件路径, Link:=False, DisplayAsIcon:=False)
+
+            ' 设置视频形状的位置和大小
+            With 视频形状
+                ' 计算居中位置
+                Dim 目标左边距 As Double
+                Dim 目标顶边距 As Double
+
+                ' 单元格的中心点
+                Dim 单元格中心点X As Double
+                Dim 单元格中心点Y As Double
+                单元格中心点X = 单元格.Left + 单元格.Width / 2
+                单元格中心点Y = 单元格.Top + 单元格.Height / 2
+
+                ' 计算形状的左上角坐标
+                目标左边距 = 单元格中心点X - .Width / 2
+                目标顶边距 = 单元格中心点Y - .Height / 2
+
+                ' 设置形状位置
+                .Top = 目标顶边距
+                .Left = 目标左边距
+
+                ' 设置形状大小
+                .ShapeRange.LockAspectRatio = msoFalse
+                .ShapeRange.Width = 单元格.Width / 2
+                .ShapeRange.Height = 单元格.Height / 2
+            End With
+        End If
+
+        ' 移动到下一个单元格
+        Set 单元格 = 单元格.Offset(1, 0)
+    Next 文件对象
+End Sub
+
+Function 文件是图片类型(文件路径 As String) As Boolean
+    On Error Resume Next
+    Dim 图片格式 As String
+    图片格式 = UCase(Right$(文件路径, Len(文件路径) - InStrRev(文件路径, ".")))
+    文件是图片类型 = (图片格式 Like "JPG" Or 图片格式 Like "JPEG" Or 图片格式 Like "PNG" Or 图片格式 Like "GIF")
+    On Error GoTo 0
+End Function
+
+Function 文件是视频类型(文件路径 As String) As Boolean
+    On Error Resume Next
+    Dim 视频格式 As String
+    视频格式 = UCase(Right$(文件路径, Len(文件路径) - InStrRev(文件路径, ".")))
+    文件是视频类型 = (视频格式 Like "MP4" Or 视频格式 Like "AVI" Or 视频格式 Like "WMV" Or 视频格式 Like "MOV")
+    On Error GoTo 0
+End Function
+
